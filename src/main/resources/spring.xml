@@ -1,0 +1,85 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:mvc="http://www.springframework.org/schema/mvc" 
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:mybatis="http://mybatis.org/schema/mybatis-spring"
+	 xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="
+        http://www.springframework.org/schema/beans     
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/mvc 
+        http://www.springframework.org/schema/mvc/spring-mvc.xsd
+        http://www.springframework.org/schema/context 
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://mybatis.org/schema/mybatis-spring http://mybatis.org/schema/mybatis-spring.xsd
+         http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.5.xsd   ">
+        
+    <mybatis:scan base-package="geym.java.training.ch12.hw.db.dao" />
+    
+    <context:annotation-config /> 
+    <context:component-scan base-package="geym.java.training.ch12" /> 
+    
+    <bean id="filequeue" class="java.util.concurrent.ConcurrentLinkedQueue" />
+    <bean id="indexIO" class="geym.java.training.ch12.hw.FileIndexIO">
+     <property name="indexFilePath" value="./target/filelist.txt" />
+    </bean>
+        
+	<bean id="fileIndexTask" class="geym.java.training.ch12.hw.FileIndexTask">
+        <property name="dirname" value="E:\\txt" />
+        <property name="fileQueue" ref="filequeue" />
+        <property name="indexIO" ref="dbIndexIO" />
+	</bean>
+	
+	<bean id="cliHandler" class="geym.java.training.ch12.hw.CliHandler">
+	   <property name="indexIO" ref="dbIndexIO" />
+	</bean>
+
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		 <!--  <property name="configLocation" value="mybatis-config.xml" />   -->
+	</bean>
+
+	 <bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
+        <property name="driverClass" value="org.h2.Driver"/>
+        <property name="url" value="jdbc:h2:./test"/>
+        <property name="username" value="sa"/>
+        <property name="password" value=""/>
+    </bean>
+
+    <bean id="readers"
+          class="org.springframework.beans.factory.config.MapFactoryBean">
+        <property name="sourceMap">
+            <map key-type="java.lang.String" value-type="geym.java.training.ch12.hw.reader.IContentReader">
+                <entry key="txt" value-ref="txtReader" />
+                <entry key="doc" value-ref="docReader" />
+                <entry key="docx" value-ref="docxReader" />
+                <entry key="xls" value-ref="xlsReader" />
+                <entry key="xlsx" value-ref="xlsxReader" />
+            </map>
+        </property>
+    </bean>
+    
+    <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+    <aop:config proxy-target-class="true">
+    	<aop:aspect ref="preDo">
+    	   	<aop:pointcut id="myPointcut" expression="execution(public * geym.java.training.ch12.hw.FileIndexTask.indexDir(..))" />
+    		<aop:before method="toPre" pointcut-ref="myPointcut"/>
+    	</aop:aspect>
+ 	</aop:config>
+ 	
+ 	
+ 	<bean class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator">
+		<property name="beanNames">
+			<list>
+				<value>readers</value>
+			</list>
+
+		</property>
+		<property name="interceptorNames">
+			<list>
+				<value>loggerBeforeAdvice</value>
+			</list>
+		</property>
+	</bean>
+    
+</beans>
